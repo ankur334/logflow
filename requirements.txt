@@ -1,2 +1,4 @@
-confluent-kafka>=2.3.0
+confluent-kafka==2.11.0
 pyarrow==21.0.0
+python-dotenv==1.1.1
+PyYAML==6.0.2

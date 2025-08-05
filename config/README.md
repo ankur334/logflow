@@ -11,7 +11,7 @@ This directory contains all configuration files and helpers for running and mana
 ```
 config/
 ├── properties/      # All .properties config files (e.g., Kafka, RedPanda)
-│   ├── client.properties
+│   ├── confluent.properties
 │   ├── redpanda.properties
 │   └── sqs.properties
 ├── yaml/            # All YAML pipeline/workflow configs
@@ -40,7 +40,7 @@ config/
 - **.properties:**  
   Place Kafka/RedPanda/SQS client config files in `properties/`.  
   Example:  
-- `config/properties/client.properties`  
+- `config/properties/confluent.properties`  
   ```properties
   bootstrap.servers=localhost:9092
   security.protocol=PLAINTEXT
@@ -64,7 +64,7 @@ Use the shared loaders provided in `config/config_reader.py`, for example:
 ```python
 from config.config_reader import read_properties, read_yaml, read_json
 
-kafka_config = read_properties("config/properties/client.properties")
+kafka_config = read_properties("config/properties/confluent.properties")
 pipeline_config = read_yaml("config/yaml/pipeline.yaml")
 ```
 
