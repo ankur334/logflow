@@ -4,3 +4,4 @@
 /external_jars/
 external_jars/*
 /jars/
+/parquet_data/

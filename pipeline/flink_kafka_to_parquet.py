@@ -44,11 +44,61 @@ class FlinkKafkaToParquetPipeline(AbstractPipeline):
             jar_urls = ";".join([f"file://{os.path.join(jars_dir, jar)}" for jar in jar_files])
             if jar_urls:
                 _set(t_env, "pipeline.jars", jar_urls)
-        _set(t_env, "execution.checkpointing.interval", self.checkpoint_interval)
+        # Simple checkpointing for file writes
+        _set(t_env, "execution.checkpointing.interval", "10 s")
 
         # Use the **same** Extractor/Transformer/Sink instances via their Flink hooks
         src_table = self.extractor.register_in_flink(t_env)
+        
+        # Create a view to print data for debugging
+        debug_view = "kafka_debug_view"
+        t_env.execute_sql(f"""
+            CREATE TEMPORARY VIEW {debug_view} AS
+            SELECT 
+                `timestamp`,
+                serviceName,
+                severityText,
+                CAST(attributes AS STRING) as attributes_str,
+                CAST(resources AS STRING) as resources_str,
+                body
+            FROM {src_table}
+        """)
+        
+        # Add print sink to see the data
+        t_env.execute_sql(f"""
+            CREATE TEMPORARY TABLE print_sink (
+                `timestamp` STRING,
+                serviceName STRING,
+                severityText STRING,
+                attributes_str STRING,
+                resources_str STRING,
+                body STRING
+            ) WITH (
+                'connector' = 'print',
+                'print-identifier' = 'KafkaData>'
+            )
+        """)
+        
+        # Create statement set to run both print and file sink together
+        statement_set = t_env.create_statement_set()
+        
+        # Add print sink
+        statement_set.add_insert_sql(f"INSERT INTO print_sink SELECT * FROM {debug_view}")
+        
+        # Continue with normal pipeline
         tmp = self.transformer.apply_in_flink(t_env, src_table) or src_table
         self.sink.register_sink_in_flink(t_env)
-        self.sink.insert_into_flink(t_env, tmp)
+        
+        # Add parquet sink
+        statement_set.add_insert_sql(f"INSERT INTO `{self.sink.table_name}` SELECT * FROM `{tmp}`")
+        
+        # Execute both sinks together
+        result = statement_set.execute()
+        print(f"Pipeline submitted. Job ID: {result.get_job_client().get_job_id()}")
+        print("📨 Data printed to console as it arrives")
+        print("📁 Files written to parquet_data/")
+        print("Press Ctrl+C to stop")
+        
+        # Let it run continuously
+        result.wait()
         # Job now runs; stop via Ctrl+C or job cancel in Flink UI

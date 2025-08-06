@@ -5,7 +5,7 @@ from extractor.base_extractor import AbstractExtractor
 
 class FlinkKafkaJsonSource(AbstractExtractor):
     def __init__(self, topic: str, startup_mode: str = "earliest-offset",
-                 table_name: str = "logs_raw", watermark_delay_seconds: int = 5,
+                 table_name: str = "last9Topic", watermark_delay_seconds: int = 5,
                  bootstrap=None, security_protocol=None, sasl_mechanism=None,
                  sasl_username=None, sasl_password=None):
         self.topic = topic
@@ -24,7 +24,7 @@ class FlinkKafkaJsonSource(AbstractExtractor):
 
     def register_in_flink(self, t_env: TableEnvironment) -> str:
         jaas = (
-            f'org.apache.kafka.common.security.plain.PlainLoginModule required '
+            f'org.apache.flink.kafka.shaded.org.apache.kafka.common.security.plain.PlainLoginModule required '
             f'username="{self.sasl_username}" password="{self.sasl_password}";'
         )
         t_env.execute_sql(f"""
@@ -34,9 +34,7 @@ class FlinkKafkaJsonSource(AbstractExtractor):
                 severityText  STRING,
                 attributes    MAP<STRING, STRING>,
                 resources     MAP<STRING, STRING>,
-                body          STRING,
-                ts AS CAST(`timestamp` AS TIMESTAMP_LTZ(3)),
-                WATERMARK FOR ts AS ts - INTERVAL '{self.watermark_delay_seconds}' SECOND
+                body          STRING
             ) WITH (
                 'connector' = 'kafka',
                 'topic' = '{self.topic}',

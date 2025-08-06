@@ -10,7 +10,7 @@ class FlinkLogPromoteTransform(AbstractTransformer):
         t_env.execute_sql(f"""
             CREATE TEMPORARY VIEW `{view}` AS
             SELECT
-                ts,
+                `timestamp`,
                 serviceName,
                 severityText,
                 attributes['msg'] AS msg,
@@ -18,9 +18,7 @@ class FlinkLogPromoteTransform(AbstractTransformer):
                 COALESCE(CAST(JSON_VALUE(body, '$.data.mobile') AS STRING), attributes['mobile']) AS mobile,
                 attributes,
                 resources,
-                body,
-                DATE_FORMAT(ts, 'yyyy-MM-dd') AS dt,
-                DATE_FORMAT(ts, 'HH')         AS hr
+                body
             FROM `{source_table}`
         """)
         return view

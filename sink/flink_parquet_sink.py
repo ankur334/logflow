@@ -3,8 +3,8 @@ from sink.base_sink import AbstractSink
 
 class FlinkFilesystemParquetSink(AbstractSink):
     def __init__(self, path: str, table_name: str = "logs_parquet",
-                 rolling_file_size="512MB", rollover_interval="5 min",
-                 rolling_check_interval="1 min", partition_commit_delay="1 min"):
+                 rolling_file_size="1KB", rollover_interval="10 s",
+                 rolling_check_interval="5 s", partition_commit_delay="5 s"):
         self.path = path
         self.table_name = table_name
         self.rolling_file_size = rolling_file_size
@@ -22,7 +22,7 @@ class FlinkFilesystemParquetSink(AbstractSink):
     def register_sink_in_flink(self, t_env):
         t_env.execute_sql(f"""
             CREATE TEMPORARY TABLE `{self.table_name}` (
-                ts            TIMESTAMP_LTZ(3),
+                `timestamp`   STRING,
                 serviceName   STRING,
                 severityText  STRING,
                 msg           STRING,
@@ -30,21 +30,14 @@ class FlinkFilesystemParquetSink(AbstractSink):
                 mobile        STRING,
                 attributes    MAP<STRING, STRING>,
                 resources     MAP<STRING, STRING>,
-                body          STRING,
-                dt            STRING,
-                hr            STRING
-            )
-            PARTITIONED BY (dt, hr)
-            WITH (
+                body          STRING
+            ) WITH (
                 'connector' = 'filesystem',
                 'path' = '{self.path}',
                 'format' = 'parquet',
                 'sink.rolling-policy.file-size' = '{self.rolling_file_size}',
                 'sink.rolling-policy.rollover-interval' = '{self.rollover_interval}',
-                'sink.rolling-policy.check-interval' = '{self.rolling_check_interval}',
-                'sink.partition-commit.trigger' = 'process-time',
-                'sink.partition-commit.delay'   = '{self.partition_commit_delay}',
-                'sink.partition-commit.policy.kind' = 'success-file'
+                'sink.rolling-policy.check-interval' = '{self.rolling_check_interval}'
             )
         """)
         return self.table_name
