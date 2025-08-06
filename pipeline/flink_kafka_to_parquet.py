@@ -43,7 +43,7 @@ class FlinkKafkaToParquetPipeline(AbstractPipeline):
         self.pipeline_jars = pipeline_jars or os.environ.get("FLINK_PIPELINE_JARS")
 
     @classmethod
-    def build(cls, topic="last9Topic", sink_path="file:///tmp/last9_parquet", **_):
+    def build(cls, topic=None, sink_path=None, **_):
         """Factory method to create pipeline with Flink components
         
         FLINK CONCEPT: Component composition
@@ -65,6 +65,13 @@ class FlinkKafkaToParquetPipeline(AbstractPipeline):
         settings = EnvironmentSettings.in_streaming_mode()
         t_env = TableEnvironment.create(settings)
         print(f"t_env = {t_env}")
+        
+        # Load environment defaults
+        from utils.env_loader import get_default_topic, get_default_sink_path
+        
+        # Use provided values or environment defaults
+        topic = topic or get_default_topic()
+        sink_path = sink_path or get_default_sink_path()
         
         # Import Flink-specific implementations
         from extractor.flink_kafka_extractor import FlinkKafkaJsonSource

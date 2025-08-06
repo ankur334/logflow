@@ -255,14 +255,30 @@ Test organization:
 
 ## ⚙️ Configuration
 
+### Environment Configuration
+Configure credentials in `.env.dev` file (for development):
+```bash
+# Development Environment Configuration for Kafka
+BOOTSTRAP_SERVERS=pkc-xxxxx.us-east-2.aws.confluent.cloud:9092
+SASL_USERNAME=YOUR_API_KEY
+SASL_PASSWORD=YOUR_API_SECRET
+KAFKA_TOPIC=last9Topic
+SINK_PATH=file:///tmp/last9_parquet
+```
+
+**Security Notes:**
+- `.env.dev` is already in `.gitignore` and won't be committed
+- Never commit credentials to version control
+- Use different `.env` files for different environments (dev, staging, prod)
+
 ### Kafka Configuration
-Configure in `config/properties/confluent.properties`:
+The `config/properties/confluent.properties` file now uses placeholders:
 ```properties
-bootstrap.servers=pkc-xxxxx.us-east-2.aws.confluent.cloud:9092
+bootstrap.servers=${BOOTSTRAP_SERVERS}
 security.protocol=SASL_SSL
-sasl.mechanism=PLAIN
-sasl.username=YOUR_API_KEY
-sasl.password=YOUR_API_SECRET
+sasl.mechanisms=PLAIN
+sasl.username=${SASL_USERNAME}
+sasl.password=${SASL_PASSWORD}
 ```
 
 ### Pipeline Parameters

@@ -1,22 +1,43 @@
-import os
 from pyflink.table import TableEnvironment
 from extractor.base_extractor import AbstractExtractor
+from utils.env_loader import get_kafka_config
 
 
 class FlinkKafkaJsonSource(AbstractExtractor):
+    """Flink Kafka source for streaming JSON data
+    
+    Creates a Kafka source table in Flink's Table API with SASL authentication.
+    Credentials are loaded from environment variables via .env.dev file.
+    """
+    
     def __init__(self, topic: str, startup_mode: str = "earliest-offset",
                  table_name: str = "last9Topic", watermark_delay_seconds: int = 5,
                  bootstrap=None, security_protocol=None, sasl_mechanism=None,
                  sasl_username=None, sasl_password=None):
+        """Initialize Kafka source with configuration
+        
+        Args:
+            topic: Kafka topic to read from
+            startup_mode: How to start reading ('earliest-offset' or 'latest-offset')
+            table_name: Name for the Flink table
+            bootstrap: Kafka bootstrap servers (uses env var if not provided)
+            sasl_username: SASL username (uses env var if not provided)  
+            sasl_password: SASL password (uses env var if not provided)
+        """
         self.topic = topic
         self.startup_mode = startup_mode
         self.table_name = table_name
         self.watermark_delay_seconds = int(watermark_delay_seconds)
-        self.bootstrap = bootstrap or os.environ.get("BOOTSTRAP_SERVERS", "pkc-921jm.us-east-2.aws.confluent.cloud:9092")
-        self.security_protocol = security_protocol or os.environ.get("SECURITY_PROTOCOL", "SASL_SSL")
-        self.sasl_mechanism = sasl_mechanism or os.environ.get("SASL_MECHANISMS", "PLAIN")
-        self.sasl_username = sasl_username or os.environ.get("SASL_USERNAME", "P37ULBCFLIIPDCU2")
-        self.sasl_password = sasl_password or os.environ.get("SASL_PASSWORD", "cfltOxgqyf8cCulWd67dwVlZelj+UrsAp+4niX/OvGWkBYf0BxDoLlwybQeqweOQ")
+        
+        # Load Kafka configuration from environment
+        kafka_config = get_kafka_config()
+        
+        # Use provided values or fall back to environment configuration
+        self.bootstrap = bootstrap or kafka_config['bootstrap_servers']
+        self.security_protocol = security_protocol or "SASL_SSL"
+        self.sasl_mechanism = sasl_mechanism or "PLAIN"
+        self.sasl_username = sasl_username or kafka_config['sasl_username']
+        self.sasl_password = sasl_password or kafka_config['sasl_password']
 
     # Not used in Flink path; satisfy ABC
     def extract(self):
