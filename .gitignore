@@ -5,3 +5,7 @@
 external_jars/*
 /jars/
 /parquet_data/
+/parquet_batch_output/
+/parquet_output_ankur/
+/parquet_output/
+/local_scripts/
