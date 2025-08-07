@@ -66,12 +66,12 @@ class FlinkKafkaToParquetPipeline(AbstractPipeline):
         t_env = TableEnvironment.create(settings)
         print(f"t_env = {t_env}")
         
-        # Load environment defaults
-        from utils.env_loader import get_default_topic, get_default_sink_path
+        # Load environment defaults - RAW LAYER for basic pipeline
+        from utils.env_loader import get_default_topic, get_raw_layer_path
         
-        # Use provided values or environment defaults
+        # Use provided values or environment defaults (RAW layer for unprocessed data)
         topic = topic or get_default_topic()
-        sink_path = sink_path or get_default_sink_path()
+        sink_path = sink_path or get_raw_layer_path()
         
         # Import Flink-specific implementations
         from extractor.flink_kafka_extractor import FlinkKafkaJsonSource
@@ -153,18 +153,19 @@ class FlinkKafkaToParquetPipeline(AbstractPipeline):
             )
         """)
         
-        # Create statement set to run both print and file sink together
-        statement_set = t_env.create_statement_set()
-        
-        # Add print sink
-        statement_set.add_insert_sql(f"INSERT INTO print_sink SELECT * FROM {debug_view}")
-        
-        # Continue with normal pipeline
+        # Continue with normal pipeline transformation
         tmp = self.transformer.apply_in_flink(t_env, src_table) or src_table
         self.sink.register_sink_in_flink(t_env)
         
-        # Add parquet sink
-        statement_set.add_insert_sql(f"INSERT INTO `{self.sink.table_name}` SELECT * FROM `{tmp}`")
+        # Create statement set to run both print and file sink together
+        statement_set = t_env.create_statement_set()
+        
+        # Add print sink for debugging
+        statement_set.add_insert_sql(f"INSERT INTO print_sink SELECT * FROM {debug_view}")
+        
+        # Add parquet sink - delegate to sink's method for proper encapsulation
+        parquet_insert_sql = self.sink.get_insert_sql(tmp)
+        statement_set.add_insert_sql(parquet_insert_sql)
         
         # Execute both sinks together
         result = statement_set.execute()

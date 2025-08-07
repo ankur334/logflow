@@ -37,10 +37,69 @@ class FlinkFilesystemParquetSink(AbstractSink):
                 'format' = 'parquet',
                 'sink.rolling-policy.file-size' = '{self.rolling_file_size}',
                 'sink.rolling-policy.rollover-interval' = '{self.rollover_interval}',
-                'sink.rolling-policy.check-interval' = '{self.rolling_check_interval}'
+                'sink.rolling-policy.check-interval' = '{self.rolling_check_interval}',
+                'auto-compaction' = 'true',
+                'compaction.file-size' = '128MB'
             )
         """)
         return self.table_name
 
-    def insert_into_flink(self, t_env, from_table: str) -> None:
-        t_env.execute_sql(f"INSERT INTO `{self.table_name}` SELECT * FROM `{from_table}`")
+    def insert_into_flink(self, t_env, from_table: str):
+        """Execute INSERT to write data to Parquet files
+        
+        Args:
+            t_env: Flink TableEnvironment
+            from_table: Source table/view name to read from
+            
+        Returns:
+            Flink execution result
+        """
+        print(f"📤 Executing INSERT from {from_table} to {self.table_name}")
+        
+        # INSERT statement for basic schema (hot keys promoted)
+        insert_sql = f"""
+            INSERT INTO `{self.table_name}`
+            SELECT 
+                `timestamp`,
+                serviceName,
+                severityText,
+                msg,
+                url,
+                mobile,
+                attributes,
+                resources,
+                body
+            FROM `{from_table}`
+        """
+        
+        print("🚀 Starting Parquet writing job...")
+        result = t_env.execute_sql(insert_sql)
+        
+        print(f"✅ Parquet writing job submitted")
+        print(f"   📊 Hot keys: msg, url, mobile promoted to columns")
+        
+        return result
+    
+    def get_insert_sql(self, from_table: str) -> str:
+        """Get INSERT SQL for use in statement sets
+        
+        Args:
+            from_table: Source table/view name
+            
+        Returns:
+            INSERT SQL string
+        """
+        return f"""
+            INSERT INTO `{self.table_name}`
+            SELECT 
+                `timestamp`,
+                serviceName,
+                severityText,
+                msg,
+                url,
+                mobile,
+                attributes,
+                resources,
+                body
+            FROM `{from_table}`
+        """

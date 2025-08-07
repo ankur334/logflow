@@ -124,3 +124,83 @@ class FlinkOptimizedParquetSink(AbstractSink):
         print(f"   🗓️  Partitioning: log_date/log_hour")  
         print(f"   📊 Schema: Hot keys promoted, quality flags added")
         print(f"   ⚡ File size: 128MB target for query performance")
+        
+    def insert_into_flink(self, t_env, from_table: str):
+        """Execute INSERT to write optimized data to Parquet files
+        
+        This method encapsulates the specific INSERT logic for the optimized sink,
+        including all performance columns and proper column ordering.
+        
+        Args:
+            t_env: Flink TableEnvironment
+            from_table: Source table/view name to read from
+            
+        Returns:
+            Flink execution result
+        """
+        print(f"📤 Executing optimized INSERT from {from_table} to {self.table_name}")
+        
+        # INSERT statement for optimized schema with all performance columns
+        insert_sql = f"""
+            INSERT INTO `{self.table_name}`
+            SELECT 
+                `timestamp`,
+                log_date,
+                log_hour,
+                serviceName,
+                severityText,
+                msg,
+                url,
+                mobile,
+                is_valid_json,
+                has_data_mobile,
+                is_getotp_url,
+                time_bucket_10min,
+                time_bucket_1hr,
+                attributes,
+                resources,
+                body
+            FROM `{from_table}`
+        """
+        
+        print("🚀 Starting optimized streaming job with performance columns...")
+        result = t_env.execute_sql(insert_sql)
+        
+        print(f"✅ Optimized Parquet writing job submitted")
+        print(f"   📊 Hot keys: msg, url, mobile promoted to columns")
+        print(f"   🏷️  Quality flags: is_valid_json, has_data_mobile, is_getotp_url")
+        print(f"   📅 Partitioning: log_date/log_hour for fast time queries")
+        print(f"   ⏱️  Time buckets: 10min/1hr intervals for aggregation")
+        
+        return result
+        
+    def get_insert_sql(self, from_table: str) -> str:
+        """Get INSERT SQL for use in statement sets
+        
+        Args:
+            from_table: Source table/view name
+            
+        Returns:
+            INSERT SQL string for optimized schema
+        """
+        return f"""
+            INSERT INTO `{self.table_name}`
+            SELECT 
+                `timestamp`,
+                log_date,
+                log_hour,
+                serviceName,
+                severityText,
+                msg,
+                url,
+                mobile,
+                is_valid_json,
+                has_data_mobile,
+                is_getotp_url,
+                time_bucket_10min,
+                time_bucket_1hr,
+                attributes,
+                resources,
+                body
+            FROM `{from_table}`
+        """

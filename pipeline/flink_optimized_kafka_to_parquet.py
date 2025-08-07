@@ -14,7 +14,7 @@ Expected Performance Improvements:
 import os
 from pyflink.table import EnvironmentSettings, TableEnvironment
 from pipeline.base_pipeline import AbstractPipeline
-from utils.env_loader import get_default_topic, get_default_sink_path
+from utils.env_loader import get_default_topic, get_silver_layer_path
 
 
 def _set(t_env, k, v): 
@@ -72,23 +72,23 @@ class FlinkOptimizedKafkaToParquetPipeline(AbstractPipeline):
         Returns:
             Configured optimized pipeline ready for execution
         """
-        # Use environment defaults if not provided
+        # Use environment defaults - SILVER LAYER for optimized pipeline
         topic = topic or get_default_topic()
-        sink_path = sink_path or get_default_sink_path()
+        sink_path = sink_path or get_silver_layer_path()
         
         print("🚀 Building optimized pipeline for Last9 query performance...")
         print(f"   📝 Topic: {topic}")
         print(f"   📁 Sink path: {sink_path}")
         
-        # Import optimized components
+        # Import optimized components for Last9 query performance
         from extractor.flink_kafka_extractor import FlinkKafkaJsonSource
-        from transformer.flink_optimized_log_transform import FlinkOptimizedLogTransform  
-        from sink.flink_optimized_parquet_sink import FlinkOptimizedParquetSink
+        from transformer.flink_optimized_log_transform import FlinkOptimizedLogTransform  # Optimized transformer
+        from sink.flink_optimized_parquet_sink import FlinkOptimizedParquetSink          # Optimized sink
         
         # Create optimized ETL components
         extractor = FlinkKafkaJsonSource(topic=topic)                     # Standard Kafka source
-        transformer = FlinkOptimizedLogTransform()                        # Optimized transformations
-        sink = FlinkOptimizedParquetSink(path=sink_path)                  # Optimized partitioned sink
+        transformer = FlinkOptimizedLogTransform()                        # OPTIMIZED: Hot keys + quality flags
+        sink = FlinkOptimizedParquetSink(path=sink_path)                  # OPTIMIZED: Partitioned sink
         
         return cls(extractor, transformer, sink)
 
@@ -142,33 +142,11 @@ class FlinkOptimizedKafkaToParquetPipeline(AbstractPipeline):
         print("💾 Registering optimized Parquet sink...")
         self.sink.register_sink_in_flink(t_env)
         
-        # STEP 7: Create and execute optimized streaming job
+        # STEP 7: Execute optimized streaming job via sink's INSERT method
         print("🚀 Executing optimized streaming pipeline...")
         
-        # Single INSERT statement for optimized data flow
-        insert_sql = f"""
-            INSERT INTO `{self.sink.table_name}`
-            SELECT 
-                `timestamp`,
-                log_date,
-                log_hour,
-                serviceName,
-                severityText, 
-                msg,
-                url,
-                mobile,
-                is_valid_json,
-                has_data_mobile,
-                is_getotp_url,
-                time_bucket_10min,
-                time_bucket_1hr,
-                attributes,
-                resources,
-                body
-            FROM `{optimized_table}`
-        """
-        
-        result = t_env.execute_sql(insert_sql)
+        # Delegate INSERT logic to the sink (proper separation of concerns)
+        result = self.sink.insert_into_flink(t_env, optimized_table)
         
         # Display optimization summary
         print("🎯 OPTIMIZATION SUMMARY:")

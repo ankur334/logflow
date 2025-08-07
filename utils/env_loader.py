@@ -61,5 +61,23 @@ def get_default_sink_path():
     return os.getenv('SINK_PATH', 'file:///tmp/last9_parquet')
 
 
+def get_raw_layer_path():
+    """Get raw layer path for bronze/raw data
+    
+    Returns:
+        str: Raw layer path for unprocessed data
+    """
+    return os.getenv('SINK_PATH_RAW', 'file:///tmp/last9_raw_layer')
+
+
+def get_silver_layer_path():
+    """Get silver layer path for processed/optimized data
+    
+    Returns:
+        str: Silver layer path for optimized data
+    """
+    return os.getenv('SINK_PATH_SILVER', 'file:///tmp/last9_silver_layer')
+
+
 # Load environment variables when module is imported
 load_dev_env()
