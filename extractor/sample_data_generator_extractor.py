@@ -82,10 +82,9 @@ class SampleDataGeneratorExtractor(AbstractExtractor):
                 message = self.generate_sample_message(i)
                 batch.append(message)
                 
-                print(f"📝 Generated message {i+1}/{self.count}:")
-                print(f"   Service: {message['serviceName']}")
-                print(f"   Mobile: {message['attributes']['mobile']}")
-                print(f"   URL: {message['attributes']['url']}")
+                # Only print progress for large batches (reduce console noise)
+                if self.count <= 100 or (i+1) % max(1, self.count // 20) == 0:
+                    print(f"📝 Generated message {i+1}/{self.count}: {message['serviceName']} | {message['attributes']['mobile']} | {message['attributes']['url']}")
             
             print(f"📦 Yielding batch {start_idx//self.batch_size + 1} with {len(batch)} messages")
             yield batch

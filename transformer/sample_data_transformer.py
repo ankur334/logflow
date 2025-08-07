@@ -102,7 +102,9 @@ class SampleDataTransformer(AbstractTransformer):
                     transformed_message = self.transform_single_message(message)
                     transformed_batch.append(transformed_message)
                     
-                    print(f"   ✅ Transformed message {i+1}: {transformed_message['serviceName']} | {transformed_message['url']}")
+                    # Reduce logging for large batches  
+                    if len(batch) <= 20 or (i+1) % max(1, len(batch) // 3) == 0:
+                        print(f"   ✅ Transformed message {i+1}: {transformed_message['serviceName']} | {transformed_message['url']}")
                     
                 except Exception as e:
                     print(f"   ❌ Error transforming message {i+1}: {e}")
