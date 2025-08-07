@@ -159,6 +159,23 @@ class SampleDataParquetSink(AbstractSink):
         
         print("✅ Batch Parquet sink completed!")
 
+    def write(self, records: List[Dict[str, Any]]) -> None:
+        """Write records to Parquet (required by AbstractSink)
+        
+        Args:
+            records: List of records to write
+        """
+        if records:
+            self.write_parquet_batch(records, 1)
+
+    def flush(self) -> None:
+        """Flush any pending writes (no-op for batch processing)"""
+        pass
+
+    def close(self) -> None:
+        """Close the sink (no-op for batch processing)"""
+        pass
+
     def register_sink_in_flink(self, t_env) -> None:
         """Not implemented for batch sink
         

@@ -21,41 +21,46 @@ class SampleDataGeneratorPipeline(AbstractPipeline):
         Args:
             extractor: Sample data generator (creates test data)
             transformer: Batch transformation logic
-            sink: Parquet destination (writes processed data)
+            sink: Kafka destination (writes processed data)
         """
         self.extractor = extractor      # Sample data generator
         self.transformer = transformer  # Batch transformations  
-        self.sink = sink               # Parquet sink
+        self.sink = sink               # Kafka sink
 
     @classmethod
-    def build(cls, count=50, sink_path=None, partition_by_time=True, **_):
+    def build(cls, count=50, topic=None, **_):
         """Factory method to create sample data pipeline
         
         Creates batch ETL components for sample data processing:
         - SampleDataGeneratorExtractor: Generates test data matching kafka_producer
         - SampleDataTransformer: Enriches data with quality flags and hot keys
-        - SampleDataParquetSink: Writes to Parquet with optional partitioning
+        - SampleDataKafkaSink: Writes to Kafka topic
         
         Args:
             count: Number of sample messages to generate
-            sink_path: Output path for Parquet files 
-            partition_by_time: Whether to partition by date/hour
+            topic: Kafka topic to send messages to (uses default from env if not provided)
             
         Returns:
             Configured batch pipeline ready for execution
         """
-        # Default sink path for sample data
-        sink_path = sink_path or os.path.join(os.getcwd(), "sample_data_output")
+        # Convert count to integer if it's a string (from CLI)
+        if isinstance(count, str):
+            count = int(count)
+        
+        # Import env loader to get default topic if not provided
+        from utils.env_loader import get_default_topic
+        
+        # Default topic for sample data
+        topic = topic or get_default_topic()
         
         print("🏗️  Building sample data generator pipeline...")
         print(f"   📊 Sample count: {count}")
-        print(f"   📁 Sink path: {sink_path}")
-        print(f"   📅 Time partitioning: {partition_by_time}")
+        print(f"   📝 Kafka topic: {topic}")
         
         # Import batch processing components 
         from extractor.sample_data_generator_extractor import SampleDataGeneratorExtractor
         from transformer.sample_data_transformer import SampleDataTransformer
-        from sink.sample_data_parquet_sink import SampleDataParquetSink
+        from sink.sample_data_kafka_sink import SampleDataKafkaSink
         
         # Create batch ETL components
         extractor = SampleDataGeneratorExtractor(count=count, batch_size=10)
@@ -64,13 +69,8 @@ class SampleDataGeneratorPipeline(AbstractPipeline):
             enrich_url_patterns=True
         )
         
-        # Configure sink with optional partitioning
-        partition_cols = ['log_date', 'log_hour'] if partition_by_time else []
-        sink = SampleDataParquetSink(
-            path=sink_path, 
-            partition_cols=partition_cols,
-            file_prefix="sample_data"
-        )
+        # Configure Kafka sink
+        sink = SampleDataKafkaSink(topic=topic)
         
         return cls(extractor, transformer, sink)
 
@@ -100,15 +100,15 @@ class SampleDataGeneratorPipeline(AbstractPipeline):
             
             transformed_data = self.transformer.transform(raw_data)
             
-            # STEP 3: Sink to Parquet
-            print("\n💾 STEP 3: Writing to Parquet files...")
+            # STEP 3: Sink to Kafka
+            print("\n📤 STEP 3: Writing to Kafka topic...")
             self.sink.sink(transformed_data)
             
             # STEP 4: Success summary
             print("\n" + "=" * 60)
             print("🎉 PIPELINE EXECUTION COMPLETED!")
-            print("✅ Sample data generated and written to Parquet")
-            print(f"📁 Output location: {self.sink.path}")
+            print("✅ Sample data generated and sent to Kafka")
+            print(f"📝 Kafka topic: {self.sink.topic}")
             print("📊 Data includes same structure as kafka_producer for consistency")
             
             # Show architectural benefits
