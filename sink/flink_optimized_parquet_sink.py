@@ -104,7 +104,9 @@ class FlinkOptimizedParquetSink(AbstractSink):
                 'sink.partition-commit.trigger' = 'process-time',
                 'sink.partition-commit.policy.kind' = 'success-file',
                 
-                -- FILE OPTIMIZATION
+                -- FILE OPTIMIZATION  
+                'auto-compaction' = 'true',                               -- Enable file compaction
+                'compaction.file-size' = '128MB',                         -- Target file size after compaction
                 'sink.rolling-policy.file-size' = '128MB',                -- Optimal for query engines
                 'sink.rolling-policy.rollover-interval' = '10 s',        -- Balance freshness vs file count
                 'sink.rolling-policy.check-interval' = '5 s',            -- Check interval for rolling
