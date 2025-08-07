@@ -1,6 +1,9 @@
+import logging
 from pyflink.table import TableEnvironment
 from extractor.base_extractor import AbstractExtractor
 from utils.env_loader import get_kafka_config
+
+log = logging.getLogger(__name__)
 
 
 class FlinkKafkaJsonSource(AbstractExtractor):
@@ -44,29 +47,60 @@ class FlinkKafkaJsonSource(AbstractExtractor):
         return iter(())  # empty iterator
 
     def register_in_flink(self, t_env: TableEnvironment) -> str:
-        jaas = (
-            f'org.apache.flink.kafka.shaded.org.apache.kafka.common.security.plain.PlainLoginModule required '
-            f'username="{self.sasl_username}" password="{self.sasl_password}";'
-        )
-        t_env.execute_sql(f"""
-            CREATE TEMPORARY TABLE `{self.table_name}` (
-                `timestamp`   STRING,
-                serviceName   STRING,
-                severityText  STRING,
-                attributes    MAP<STRING, STRING>,
-                resources     MAP<STRING, STRING>,
-                body          STRING
-            ) WITH (
-                'connector' = 'kafka',
-                'topic' = '{self.topic}',
-                'properties.bootstrap.servers' = '{self.bootstrap}',
-                'properties.security.protocol' = '{self.security_protocol}',
-                'properties.sasl.mechanism' = '{self.sasl_mechanism}',
-                'properties.sasl.jaas.config' = '{jaas}',
-                'scan.startup.mode' = '{self.startup_mode}',
-                'format' = 'json',
-                'json.ignore-parse-errors' = 'true',
-                'json.timestamp-format.standard' = 'ISO-8601'
+        """Register Kafka source table in Flink with production-ready configuration"""
+        log.info(f"Registering Kafka source table: {self.table_name}")
+        log.info(f"  Topic: {self.topic}")
+        log.info(f"  Bootstrap servers: {self.bootstrap}")
+        log.info(f"  Startup mode: {self.startup_mode}")
+        
+        try:
+            # Validate required configuration
+            if not self.bootstrap:
+                raise ValueError("Bootstrap servers not configured")
+            if not self.sasl_username or not self.sasl_password:
+                raise ValueError("SASL credentials not configured")
+                
+            # Create JAAS configuration for authentication
+            jaas = (
+                f'org.apache.flink.kafka.shaded.org.apache.kafka.common.security.plain.PlainLoginModule required '
+                f'username="{self.sasl_username}" password="{self.sasl_password}";'
             )
-        """)
-        return self.table_name
+            
+            # Create Kafka source table with production settings
+            ddl_sql = f"""
+                CREATE TEMPORARY TABLE `{self.table_name}` (
+                    `timestamp`   STRING,
+                    serviceName   STRING,
+                    severityText  STRING,
+                    attributes    MAP<STRING, STRING>,
+                    resources     MAP<STRING, STRING>,
+                    body          STRING
+                ) WITH (
+                    'connector' = 'kafka',
+                    'topic' = '{self.topic}',
+                    'properties.bootstrap.servers' = '{self.bootstrap}',
+                    'properties.security.protocol' = '{self.security_protocol}',
+                    'properties.sasl.mechanism' = '{self.sasl_mechanism}',
+                    'properties.sasl.jaas.config' = '{jaas}',
+                    'scan.startup.mode' = '{self.startup_mode}',
+                    'format' = 'json',
+                    'json.ignore-parse-errors' = 'true',
+                    'json.timestamp-format.standard' = 'ISO-8601',
+                    'properties.group.id' = 'flink-kafka-to-parquet',
+                    'properties.auto.offset.reset' = 'earliest',
+                    'properties.enable.auto.commit' = 'false',
+                    'properties.max.poll.records' = '1000',
+                    'properties.session.timeout.ms' = '45000',
+                    'properties.heartbeat.interval.ms' = '3000'
+                )
+            """
+            
+            log.debug(f"Executing Kafka source DDL: {ddl_sql}")
+            t_env.execute_sql(ddl_sql)
+            
+            log.info(f"✅ Kafka source table registered successfully: {self.table_name}")
+            return self.table_name
+            
+        except Exception as e:
+            log.error(f"❌ Failed to register Kafka source table: {e}")
+            raise ValueError(f"Kafka source registration failed: {e}")
