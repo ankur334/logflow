@@ -5,14 +5,19 @@ import os
 import urllib.request
 from pathlib import Path
 
-FLINK_VERSION = "1.18"
-KAFKA_VERSION = "3.0.1-1.18.1"
+FLINK_VERSION = "1.20"
+KAFKA_VERSION = "3.3.0-1.20"
+PARQUET_VERSION = "1.20.0"
 JARS_DIR = Path("jars")
 
 JARS = [
     {
         "name": "flink-sql-connector-kafka",
         "url": f"https://repo.maven.apache.org/maven2/org/apache/flink/flink-sql-connector-kafka/{KAFKA_VERSION}/flink-sql-connector-kafka-{KAFKA_VERSION}.jar"
+    },
+    {
+        "name": "flink-sql-parquet",
+        "url": f"https://repo.maven.apache.org/maven2/org/apache/flink/flink-sql-parquet/{PARQUET_VERSION}/flink-sql-parquet-{PARQUET_VERSION}.jar"
     }
 ]
 

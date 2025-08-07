@@ -162,9 +162,10 @@ CREATE TABLE parquet_sink (
 ## 🛠️ Installation
 
 ### Prerequisites
-- Python 3.11+ (tested with 3.11.9)
-- Apache Flink 1.20 compatible environment
-- Access to Kafka cluster (Confluent Cloud/MSK/RedPanda)
+- **Python**: 3.11.9 (tested version)
+- **Java**: 11 or higher (required by Apache Flink)
+- **Memory**: Minimum 4GB RAM recommended
+- **Kafka Access**: Confluent Cloud, AWS MSK, or RedPanda cluster
 
 ### Setup Steps
 
@@ -174,25 +175,59 @@ python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 ```
 
-2. **Install Dependencies:**
+2. **Install Python Dependencies:**
 ```bash
 pip install -r requirements.txt
 ```
 
-Key dependencies:
-- `apache-flink==1.20.0` - PyFlink framework
-- `confluent-kafka==2.11.0` - Kafka client
-- `pyarrow==11.0.0` - Parquet support
+**Exact Python Dependencies:**
+```
+apache-flink==1.20.0          # PyFlink framework
+confluent-kafka==2.11.0       # Kafka client library
+python-dotenv==1.1.1          # Environment configuration
+PyYAML==6.0.2                 # YAML configuration support
+pyarrow==11.0.0               # Parquet file format support
+pandas==2.0.3                 # Data manipulation
+pytest==8.4.1                 # Testing framework (dev dependency)
+```
 
-3. **Download Flink JAR Dependencies:**
+3. **Download Required JAR Files:**
 ```bash
 python download_jars.py
 ```
 
-Required JARs:
-- `flink-sql-connector-kafka.jar` - Kafka connector
-- `flink-sql-parquet.jar` - Parquet format
-- Hadoop dependencies for filesystem operations
+**Complete JAR Dependencies with Exact Versions:**
+
+| Component | JAR File | Version | Purpose |
+|-----------|----------|---------|---------|
+| **Flink Connectors** |
+| Kafka Connector | `flink-sql-connector-kafka.jar` | 3.3.0-1.20 | Kafka source/sink |
+| Parquet Connector | `flink-sql-parquet.jar` | 1.20.0 | Parquet file format |
+| **Hadoop Ecosystem** |
+| Hadoop Common | `hadoop-common.jar` | 3.3.4 | HDFS/filesystem operations |
+| Hadoop MapReduce | `hadoop-mapreduce-client-core.jar` | 3.3.4 | MapReduce client |
+| Hadoop Shaded Guava | `hadoop-shaded-guava.jar` | 1.1.1 | Guava for Hadoop |
+| **Supporting Libraries** |
+| Google Guava | `guava.jar` | 31.1.0 | Core utilities |
+| Commons Configuration | `commons-configuration2.jar` | 2.8.0 | Configuration management |
+| Commons Text | `commons-text.jar` | 1.9 | Text processing utilities |
+| Stax2 API | `stax2-api.jar` | 4.2.1 | XML processing API |
+| Woodstox Core | `woodstox-core.jar` | 6.4.0 | XML processing implementation |
+
+**Total JAR Size**: ~30MB (10 JAR files)
+
+4. **Verify Installation:**
+```bash
+# Check Python and dependencies
+python --version  # Should show 3.11.9
+python -c "import pyflink; print(pyflink.__version__)"  # Should show 1.20.0
+
+# Check JAR files
+ls -la jars/  # Should list 10 JAR files
+
+# Run tests to verify setup
+python -m pytest tests/ -v
+```
 
 ## 📊 Flink Concepts Explained
 
@@ -369,6 +404,50 @@ Monitor checkpointing in `/tmp/flink-checkpoints/`
 - [Apache Flink Documentation](https://flink.apache.org/docs/)
 - [PyFlink Table API Guide](https://nightlies.apache.org/flink/flink-docs-master/docs/dev/python/table_api_tutorial/)
 - [Confluent Kafka Documentation](https://docs.confluent.io/)
+
+## 🔧 Troubleshooting
+
+### Version Compatibility Issues
+
+**JAR Version Mismatches:**
+```bash
+# If you see ClassNotFoundException or NoSuchMethodError
+# Verify all JARs are compatible with Flink 1.20
+ls -la jars/
+python download_jars.py  # Re-download if needed
+```
+
+**Python Version Issues:**
+```bash
+# If PyFlink fails to import
+python --version  # Must be 3.11.9 or compatible
+pip install --upgrade apache-flink==1.20.0
+```
+
+**Memory Issues:**
+```bash
+# If Flink jobs fail with OutOfMemoryError
+export FLINK_ENV_JAVA_OPTS="-Xmx2g -Xms1g"
+```
+
+### Version Verification Commands
+
+```bash
+# Quick health check
+python -c "
+import sys
+print(f'Python: {sys.version}')
+import pyflink
+print(f'PyFlink: {pyflink.__version__}')
+import pandas as pd
+print(f'Pandas: {pd.__version__}')
+import pyarrow as pa
+print(f'PyArrow: {pa.__version__}')
+"
+
+# JAR verification
+find jars -name "*.jar" -exec basename {} \; | sort
+```
 
 ## 🤝 Contributing
 
