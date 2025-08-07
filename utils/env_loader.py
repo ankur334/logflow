@@ -58,7 +58,7 @@ def get_default_sink_path():
     Returns:
         str: Default sink path for output files
     """
-    return os.getenv('SINK_PATH', 'file:///tmp/last9_parquet')
+    return os.getenv('SINK_PATH', 'file:///tmp/last9_output_layer')
 
 
 def get_raw_layer_path():
